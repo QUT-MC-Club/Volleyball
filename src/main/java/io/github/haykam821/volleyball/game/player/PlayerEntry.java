@@ -10,6 +10,8 @@ import xyz.nucleoid.map_templates.TemplateRegion;
 import xyz.nucleoid.plasmid.game.event.GameActivityEvents;
 
 public class PlayerEntry implements GameActivityEvents.Tick {
+	private static final double OUT_OF_BOUNDS_CLAMP_INSET = 0.03;
+
 	private final VolleyballActivePhase phase;
 	private final ServerPlayerEntity player;
 	private final TeamEntry team;
@@ -30,9 +32,9 @@ public class PlayerEntry implements GameActivityEvents.Tick {
 			BlockPos min = area.getBounds().min();
 			BlockPos max = area.getBounds().max();
 
-			double x = MathHelper.clamp(pos.getX(), min.getX(), max.getX() + 1);
-			double y = MathHelper.clamp(pos.getY(), min.getY(), max.getY() + 1);
-			double z = MathHelper.clamp(pos.getZ(), min.getZ(), max.getZ() + 1);
+			double x = clampOutOfBounds(pos.getX(), min.getX(), max.getX() + 1);
+			double y = clampOutOfBounds(pos.getY(), min.getY(), max.getY() + 1);
+			double z = clampOutOfBounds(pos.getZ(), min.getZ(), max.getZ() + 1);
 
 			player.teleport(x, y, z);
 		}
@@ -61,5 +63,13 @@ public class PlayerEntry implements GameActivityEvents.Tick {
 
 		this.player.currentScreenHandler.sendContentUpdates();
 		this.player.playerScreenHandler.onContentChanged(this.player.getInventory());
+	}
+
+	private static double clampOutOfBounds(double value, double min, double max) {
+		if (value < min || value > max) {
+			return MathHelper.clamp(value, min + OUT_OF_BOUNDS_CLAMP_INSET, max - OUT_OF_BOUNDS_CLAMP_INSET);
+		}
+
+		return value;
 	}
 }
