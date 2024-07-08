@@ -58,7 +58,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	/**
 	 * The number of ticks since the ball was last hit.
 	 */
-	private int inactiveBallTicks = 0;
+	private int inactiveBallTicks = -1;
 
 	public VolleyballActivePhase(ServerWorld world, GameSpace gameSpace, VolleyballMap map, TeamManager teamManager, GlobalWidgets widgets, VolleyballConfig config, Text shortName) {
 		this.world = world;
@@ -169,7 +169,10 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 			this.resetBall();
 			this.gameSpace.getPlayers().sendMessage(this.getInactiveBallResetText());
 		} else {
-			this.inactiveBallTicks += 1;
+			if (this.inactiveBallTicks >= 0) {
+				this.inactiveBallTicks += 1;
+			}
+
 			for (TeamEntry team : this.getTeams()) {
 				if (team.isBallOnCourt(this.ball)) {
 					team.getOtherTeam().incrementScore();
@@ -249,7 +252,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 
 	public Entity spawnBall() {
 		this.ball = this.config.getBallEntityConfig().createEntity(this.world, this.world.getRandom());
-		this.inactiveBallTicks = 0;
+		this.inactiveBallTicks = -1;
 
 		this.map.spawnAtBall(this.world, this.ball);
 		this.world.spawnEntity(this.ball);
