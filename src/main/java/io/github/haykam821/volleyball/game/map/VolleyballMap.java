@@ -4,6 +4,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
@@ -47,6 +48,10 @@ public class VolleyballMap {
 			offer.player().setYaw(this.getWaitingSpawnYaw());
 			offer.player().changeGameMode(gameMode);
 		});
+	}
+
+	public Box getBallSpawnBox() {
+		return this.ballSpawn.getBounds().asBox();
 	}
 
 	public void spawnAtBall(ServerWorld world, Entity entity) {

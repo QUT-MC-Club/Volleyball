@@ -59,6 +59,10 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	 * The number of ticks since the ball was last hit.
 	 */
 	private int inactiveBallTicks = -1;
+	/**
+	 * The team that last hit the ball.
+	 */
+	private TeamEntry possessionTeam;
 
 	public VolleyballActivePhase(ServerWorld world, GameSpace gameSpace, VolleyballMap map, TeamManager teamManager, GlobalWidgets widgets, VolleyballConfig config, Text shortName) {
 		this.world = world;
@@ -140,7 +144,14 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	@Override
 	public ActionResult onAttackEntity(ServerPlayerEntity attacker, Hand hand, Entity attacked, EntityHitResult hitResult) {
 		if (attacked == this.ball) {
+			PlayerEntry entry = this.getPlayerEntry(attacker);
+
+			if (entry != null) {
+				this.possessionTeam = entry.getTeam();
+			}
+
 			this.inactiveBallTicks = 0;
+
 			return ActionResult.PASS;
 		}
 		return ActionResult.FAIL;
@@ -176,9 +187,12 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 			for (TeamEntry team : this.getTeams()) {
 				if (team.isBallOnCourt(this.ball)) {
 					team.getOtherTeam().incrementScore();
-					this.scoreboard.update();
 					break;
 				}
+			}
+
+			if (this.possessionTeam != null && this.hasBallLandedOffCourt()) {
+				this.possessionTeam.getOtherTeam().incrementScore();
 			}
 		}
 
@@ -239,6 +253,10 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 		return this.teams;
 	}
 
+	public VolleyballScoreboard getScoreboard() {
+		return this.scoreboard;
+	}
+
 	// Utilities
 	public TeamEntry getChatTeam(ServerPlayerEntity sender) {
 		if (!(sender instanceof HasChatChannel)) return null;
@@ -253,6 +271,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	public Entity spawnBall() {
 		this.ball = this.config.getBallEntityConfig().createEntity(this.world, this.world.getRandom());
 		this.inactiveBallTicks = -1;
+		this.possessionTeam = null;
 
 		this.map.spawnAtBall(this.world, this.ball);
 		this.world.spawnEntity(this.ball);
@@ -267,6 +286,10 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 		}
 
 		this.ballTicks = this.config.getResetBallTicks();
+	}
+
+	private boolean hasBallLandedOffCourt() {
+		return this.ball != null && this.ball.isOnGround() && !this.map.getBallSpawnBox().intersects(ball.getBoundingBox());
 	}
 
 	public Text getInactiveBallResetText() {

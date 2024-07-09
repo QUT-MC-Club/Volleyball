@@ -62,12 +62,14 @@ public class TeamEntry implements Comparable<TeamEntry> {
 		return ball.isOnGround() || ball.getY() < this.courtBox.minY;
 	}
 
-	public int incrementScore() {
+	public void incrementScore() {
 		this.phase.getGameSpace().getPlayers().sendMessage(this.getScoreText());
 		this.phase.pling();
+
 		this.phase.resetBall();
 
-		return this.score += 1;
+		this.score += 1;
+		this.phase.getScoreboard().update();
 	}
 
 	public boolean hasRequiredScore() {
