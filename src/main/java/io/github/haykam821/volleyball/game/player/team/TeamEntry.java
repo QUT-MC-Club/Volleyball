@@ -62,11 +62,15 @@ public class TeamEntry implements Comparable<TeamEntry> {
 		return ball.isOnGround() || ball.getY() < this.courtBox.minY;
 	}
 
-	public void incrementScore() {
+	public void incrementOtherTeamScore() {
+		this.getOtherTeam().incrementScore(this);
+	}
+
+	private void incrementScore(TeamEntry causer) {
 		this.phase.getGameSpace().getPlayers().sendMessage(this.getScoreText());
 		this.phase.pling();
 
-		this.phase.resetBall();
+		this.phase.resetBall(causer);
 
 		this.score += 1;
 		this.phase.getScoreboard().update();
@@ -88,6 +92,10 @@ public class TeamEntry implements Comparable<TeamEntry> {
 		return Text.translatable("text.volleyball.scoreboard.entry", this.getName(), this.score);
 	}
 
+	public Formatting getFormatting() {
+		return this.config.chatFormatting();
+	}
+
 	public Text getName() {
 		return this.config.name();
 	}
@@ -101,7 +109,7 @@ public class TeamEntry implements Comparable<TeamEntry> {
 		return template.getMetadata().getFirstRegion(this.key.id() + "_" + key);
 	}
 
-	public TeamEntry getOtherTeam() {
+	private TeamEntry getOtherTeam() {
 		for (TeamEntry team : this.phase.getTeams()) {
 			if (this != team) return team;
 		}

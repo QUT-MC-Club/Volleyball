@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import eu.pb4.polymer.virtualentity.api.attachment.HolderAttachment;
 import io.github.haykam821.volleyball.game.VolleyballConfig;
 import io.github.haykam821.volleyball.game.ball.BallState;
 import io.github.haykam821.volleyball.game.ball.InactiveBallState;
@@ -250,8 +251,9 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	/**
 	 * Resets the ball, transitioning it into the ready state.
 	 */
-	public void resetBall() {
-		this.setBallState(new InactiveBallState(this));
+	public void resetBall(TeamEntry markerTeam) {
+		HolderAttachment markerAttachment = markerTeam == null ? null : this.ballState.createMarker(markerTeam, this.world);
+		this.setBallState(new InactiveBallState(this, markerAttachment));
 	}
 
 	public void setBallState(BallState ballState) {

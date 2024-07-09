@@ -31,13 +31,13 @@ public class ActiveBallState extends EntityBallState {
 		if (this.onEntityTick()) return;
 
 		if (this.ticksSinceHit >= this.phase.getConfig().getInactiveBallTicks()) {
-			this.phase.resetBall();
+			this.phase.resetBall(null);
 			this.phase.getGameSpace().getPlayers().sendMessage(INACTIVE_BALL_RESET_MESSAGE);
 		} else {
 			this.ticksSinceHit += 1;
 
 			if (this.possessionTeam != null && this.phase.hasBallLandedOffCourt(this.ball)) {
-				this.possessionTeam.getOtherTeam().incrementScore();
+				this.possessionTeam.incrementOtherTeamScore();
 			}
 		}
 	}
