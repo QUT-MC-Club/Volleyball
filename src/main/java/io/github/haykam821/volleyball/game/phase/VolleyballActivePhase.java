@@ -6,6 +6,9 @@ import java.util.Map;
 import java.util.Set;
 
 import io.github.haykam821.volleyball.game.VolleyballConfig;
+import io.github.haykam821.volleyball.game.ball.BallState;
+import io.github.haykam821.volleyball.game.ball.InactiveBallState;
+import io.github.haykam821.volleyball.game.ball.ReadyBallState;
 import io.github.haykam821.volleyball.game.map.VolleyballMap;
 import io.github.haykam821.volleyball.game.player.PlayerEntry;
 import io.github.haykam821.volleyball.game.player.WinManager;
@@ -20,7 +23,6 @@ import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
-import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.world.GameMode;
@@ -53,16 +55,8 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	private final Set<TeamEntry> teams;
 	private final WinManager winManager = new WinManager(this);
 	private final VolleyballScoreboard scoreboard;
-	private Entity ball;
-	private int ballTicks = 0;
-	/**
-	 * The number of ticks since the ball was last hit.
-	 */
-	private int inactiveBallTicks = -1;
-	/**
-	 * The team that last hit the ball.
-	 */
-	private TeamEntry possessionTeam;
+
+	private BallState ballState;
 
 	public VolleyballActivePhase(ServerWorld world, GameSpace gameSpace, VolleyballMap map, TeamManager teamManager, GlobalWidgets widgets, VolleyballConfig config, Text shortName) {
 		this.world = world;
@@ -143,17 +137,12 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	// Listeners
 	@Override
 	public ActionResult onAttackEntity(ServerPlayerEntity attacker, Hand hand, Entity attacked, EntityHitResult hitResult) {
-		if (attacked == this.ball) {
-			PlayerEntry entry = this.getPlayerEntry(attacker);
+		PlayerEntry entry = this.getPlayerEntry(attacker);
 
-			if (entry != null) {
-				this.possessionTeam = entry.getTeam();
-			}
-
-			this.inactiveBallTicks = 0;
-
+		if (this.ballState.onAttackEntity(entry, attacked)) {
 			return ActionResult.PASS;
 		}
+
 		return ActionResult.FAIL;
 	}
 
@@ -163,6 +152,8 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 			player.spawn();
 			player.clearInventory();
 		}
+
+		this.spawnBall();
 	}
 
 	@Override
@@ -171,30 +162,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 			entry.onTick();
 		}
 
-		if (this.ball == null || !this.ball.isAlive()) {
-			this.ballTicks -= 1;
-			if (this.ballTicks <= 0) {
-				this.spawnBall();
-			}
-		} else if (this.inactiveBallTicks >= this.config.getInactiveBallTicks()) {
-			this.resetBall();
-			this.gameSpace.getPlayers().sendMessage(this.getInactiveBallResetText());
-		} else {
-			if (this.inactiveBallTicks >= 0) {
-				this.inactiveBallTicks += 1;
-			}
-
-			for (TeamEntry team : this.getTeams()) {
-				if (team.isBallOnCourt(this.ball)) {
-					team.getOtherTeam().incrementScore();
-					break;
-				}
-			}
-
-			if (this.possessionTeam != null && this.hasBallLandedOffCourt()) {
-				this.possessionTeam.getOtherTeam().incrementScore();
-			}
-		}
+		this.ballState.onTick();
 
 		// Attempt to determine a winner
 		if (this.winManager.checkForWinner()) {
@@ -268,32 +236,34 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 		return entry.getTeam();
 	}
 
-	public Entity spawnBall() {
-		this.ball = this.config.getBallEntityConfig().createEntity(this.world, this.world.getRandom());
-		this.inactiveBallTicks = -1;
-		this.possessionTeam = null;
+	/**
+	 * Spawns a ball, transitioning it into the ready state.
+	 */
+	public void spawnBall() {
+		Entity ball = this.config.getBallEntityConfig().createEntity(this.world, this.world.getRandom());
+		this.setBallState(new ReadyBallState(this, ball));
 
-		this.map.spawnAtBall(this.world, this.ball);
-		this.world.spawnEntity(this.ball);
-
-		return this.ball;
+		this.map.spawnAtBall(this.world, ball);
+		this.world.spawnEntity(ball);
 	}
 
+	/**
+	 * Resets the ball, transitioning it into the ready state.
+	 */
 	public void resetBall() {
-		if (this.ball != null) {
-			this.ball.discard();
-			this.ball = null;
+		this.setBallState(new InactiveBallState(this));
+	}
+
+	public void setBallState(BallState ballState) {
+		if (this.ballState != null) {
+			this.ballState.destroy(ballState);
 		}
 
-		this.ballTicks = this.config.getResetBallTicks();
+		this.ballState = ballState;
 	}
 
-	private boolean hasBallLandedOffCourt() {
-		return this.ball != null && this.ball.isOnGround() && !this.map.getBallSpawnBox().intersects(ball.getBoundingBox());
-	}
-
-	public Text getInactiveBallResetText() {
-		return Text.translatable("text.volleyball.inactive_ball_reset").formatted(Formatting.RED);
+	public boolean hasBallLandedOffCourt(Entity ball) {
+		return ball.isOnGround() && !this.map.getBallSpawnBox().intersects(ball.getBoundingBox());
 	}
 
 	public void pling() {
