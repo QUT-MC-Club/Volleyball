@@ -58,6 +58,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	private final VolleyballScoreboard scoreboard;
 
 	private BallState ballState;
+	private int ticksUntilClose = -1;
 
 	public VolleyballActivePhase(ServerWorld world, GameSpace gameSpace, VolleyballMap map, TeamManager teamManager, GlobalWidgets widgets, VolleyballConfig config, Text shortName) {
 		this.world = world;
@@ -163,11 +164,21 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 			entry.onTick();
 		}
 
+		// Decrease ticks until game end to zero
+		if (this.isGameEnding()) {
+			if (this.ticksUntilClose == 0) {
+				this.gameSpace.close(GameCloseReason.FINISHED);
+			}
+
+			this.ticksUntilClose -= 1;
+			return;
+		}
+
 		this.ballState.onTick();
 
 		// Attempt to determine a winner
 		if (this.winManager.checkForWinner()) {
-			gameSpace.close(GameCloseReason.FINISHED);
+			this.endGame();
 		}
 	}
 
@@ -262,6 +273,14 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 		}
 
 		this.ballState = ballState;
+	}
+
+	private void endGame() {
+		this.ticksUntilClose = this.config.getTicksUntilClose().get(this.world.getRandom());
+	}
+
+	private boolean isGameEnding() {
+		return this.ticksUntilClose >= 0;
 	}
 
 	public boolean hasBallLandedOffCourt(Entity ball) {
